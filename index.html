@@ -46,7 +46,7 @@
             background-position: 0 0, 10px 10px;
         }
 
-        /* Geometric Tribal Pattern Border (CSS approximation of basket steps) */
+        /* Geometric Tribal Pattern Border */
         .tribal-border-top {
             position: relative;
         }
@@ -117,8 +117,15 @@
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 18 12"/></svg>
         );
 
-        // Data sourced from Gatschet (1890) and modern Klamath Tribes resources
+        // Data sourced from Gatschet (1890), modern Klamath Tribes resources, and Language Program Lessons
         const VOCABULARY = [
+            // Video Lesson Additions
+            { id: 101, category: "Body", maklaks: "Niis", english: "Neck", pronunciation: "Neece" },
+            { id: 102, category: "Basics", maklaks: "Ge", english: "This", pronunciation: "Geh" },
+            { id: 103, category: "Animals", maklaks: "Yihu", english: "Buffalo", pronunciation: "Yoo-hoo" },
+            { id: 104, category: "Phrases", maklaks: "Waq dal ?i gee ?ewksiknii ?elgank", english: "How do you say that in Klamath?", pronunciation: "Wok dal ee geh ewk-sik-nee el-gank" },
+
+            // Original Data
             { id: 1, category: "Numbers", maklaks: "Ńaas", english: "One", pronunciation: "Naas" },
             { id: 2, category: "Numbers", maklaks: "Laap", english: "Two", pronunciation: "Lahp" },
             { id: 3, category: "Numbers", maklaks: "Ndan", english: "Three", pronunciation: "N-dan" },
@@ -155,6 +162,18 @@
             { id: 34, category: "Phrases", maklaks: "Sepk'eec'a", english: "Thank you", pronunciation: "Sep-kee-cha" }
         ];
 
+        // --- Audio Helper ---
+        const playAudio = (text) => {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.85; 
+                utterance.pitch = 1.0;
+                utterance.lang = 'en-US'; 
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
         // --- Components ---
 
         const NavButton = ({ active, label, icon: Icon, onClick }) => (
@@ -169,6 +188,30 @@
                 <Icon size={20} className={active ? 'text-white' : 'text-ochre'} />
                 <span className="font-serif tracking-wide">{label}</span>
             </button>
+        );
+
+        const VowelCard = () => (
+            <div className="bg-maklaks-gold-light p-4 rounded-lg border border-ochre mb-6">
+                <h3 className="font-bold text-lake-blue text-lg mb-2 font-serif">Vowel Sounds</h3>
+                <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                    <div className="p-2 bg-white rounded shadow-sm">
+                        <span className="block font-bold text-xl text-ochre">a</span>
+                        <span className="text-gray-500">"ah"</span>
+                    </div>
+                    <div className="p-2 bg-white rounded shadow-sm">
+                        <span className="block font-bold text-xl text-ochre">e</span>
+                        <span className="text-gray-500">"ah/eh"</span>
+                    </div>
+                    <div className="p-2 bg-white rounded shadow-sm">
+                        <span className="block font-bold text-xl text-ochre">i</span>
+                        <span className="text-gray-500">"ee"</span>
+                    </div>
+                    <div className="p-2 bg-white rounded shadow-sm">
+                        <span className="block font-bold text-xl text-ochre">o</span>
+                        <span className="text-gray-500">"oo"</span>
+                    </div>
+                </div>
+            </div>
         );
 
         const VocabularySection = () => {
@@ -188,6 +231,8 @@
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="bg-maklaks-gold-light/90 p-6 rounded-t-sm rounded-b-xl shadow-md border-t-4 border-lake-blue tribal-border-top backdrop-blur-sm">
                         
+                        <VowelCard />
+
                         {/* Search & Filter */}
                         <div className="flex flex-col md:flex-row gap-4 mb-6">
                             <div className="relative flex-1">
@@ -220,16 +265,28 @@
                         {/* Card Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto vocab-scroll pr-2">
                             {filteredVocab.map(item => (
-                                <div key={item.id} className="group relative p-5 rounded-lg bg-white border border-maklaks-gold shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                                <div 
+                                    key={item.id} 
+                                    className="group relative p-5 rounded-lg bg-white border border-maklaks-gold shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+                                    onClick={() => playAudio(item.pronunciation)}
+                                >
                                     
                                     {/* Geometric accent corner */}
                                     <div className="absolute top-0 right-0 w-0 h-0 border-l-[24px] border-l-transparent border-t-[24px] border-t-ochre opacity-80 rounded-tr-lg"></div>
 
                                     <div className="flex justify-between items-start mb-3">
                                         <span className="text-xs font-bold text-ochre uppercase tracking-widest">{item.category}</span>
-                                        <IconVolume2 size={16} className="text-maklaks-gold hover:text-lake-blue transition-colors cursor-pointer" />
+                                        <button 
+                                            className="p-1 rounded-full hover:bg-maklaks-gold-light transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                playAudio(item.pronunciation);
+                                            }}
+                                        >
+                                            <IconVolume2 size={16} className="text-maklaks-gold hover:text-lake-blue transition-colors" />
+                                        </button>
                                     </div>
-                                    <h3 className="text-2xl font-serif font-bold text-lake-blue mb-1">{item.maklaks}</h3>
+                                    <h3 className="text-2xl font-serif font-bold text-lake-blue mb-1 group-active:scale-95 transition-transform">{item.maklaks}</h3>
                                     <p className="text-gray-500 italic mb-3 text-sm font-sans">"{item.pronunciation}"</p>
                                     
                                     <div className="h-px bg-gradient-to-r from-transparent via-maklaks-gold to-transparent my-2"></div>
@@ -290,7 +347,20 @@
                                 
                                 <span className="relative z-10 text-xs font-bold text-maklaks-gold uppercase tracking-widest mb-4">Maklaks</span>
                                 <h3 className="relative z-10 text-5xl font-serif font-bold text-white text-center mb-2">{currentCard.maklaks}</h3>
-                                <p className="relative z-10 text-maklaks-gold text-xl italic mb-6">"{currentCard.pronunciation}"</p>
+                                
+                                <div className="relative z-10 flex items-center gap-2 mb-6">
+                                    <p className="text-maklaks-gold text-xl italic">"{currentCard.pronunciation}"</p>
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            playAudio(currentCard.pronunciation);
+                                        }}
+                                        className="p-2 bg-white/10 rounded-full hover:bg-white/30 transition-colors"
+                                    >
+                                        <IconVolume2 size={20} className="text-white" />
+                                    </button>
+                                </div>
+                                
                                 <span className="relative z-10 px-4 py-1 bg-ochre rounded-full text-xs font-bold tracking-wide">{currentCard.category}</span>
                             </div>
                         </div>
@@ -334,6 +404,10 @@
 
             const handleAnswer = (selected) => {
                 if (feedback) return;
+                
+                // Pronounce the selected word
+                playAudio(selected.pronunciation);
+
                 const isCorrect = selected.id === question.id;
                 setTotal(prev => prev + 1);
                 if (isCorrect) setScore(prev => prev + 1);
@@ -402,6 +476,16 @@
                             The language featured in this app is <strong>Klamath-Modoc</strong>, traditionally known by the people as <strong>Maklaks</strong> (meaning "The People"). It is a Plateau Penutian language spoken historically around the wetlands of Klamath Lake and the lava plateaus of the Modoc region.
                         </p>
                         
+                        <div className="bg-amber-50 p-6 rounded-lg border-l-4 border-ochre my-6">
+                            <h3 className="text-xl font-bold text-ochre mb-2">Three Tribes, Two Languages</h3>
+                            <p>The Klamath Tribes Confederated consists of three distinct peoples:</p>
+                            <ul className="list-disc pl-5 mt-2 space-y-1">
+                                <li><strong>Klamath</strong> (maqlaqsyals)</li>
+                                <li><strong>Modoc</strong> (maqlaqsyals)</li>
+                                <li><strong>Yahooskin</strong> (Speaking <em>Numu</em>, a Northern Paiute dialect)</li>
+                            </ul>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
                             <div className="bg-maklaks-gold-light p-6 rounded-lg border-l-4 border-lake-blue">
                                 <h4 className="font-bold text-lake-blue text-xl mb-2 font-sans">Basketry & Tule</h4>
@@ -409,10 +493,15 @@
                                     The app's design is inspired by the intricate basketry of the Klamath and Modoc. Woven from <strong>tule</strong> (marsh reed) and cattails found in the vast marshes, these baskets use geometric "step" patterns and triangles, often dyed with mud or roots.
                                 </p>
                             </div>
-                            <div className="bg-maklaks-gold-light p-6 rounded-lg border-l-4 border-ochre">
-                                <h4 className="font-bold text-ochre text-xl mb-2 font-sans">Orthography Note</h4>
+                            <div className="bg-maklaks-gold-light p-6 rounded-lg border-l-4 border-lake-blue">
+                                <h4 className="font-bold text-lake-blue text-xl mb-2 font-sans">Language Department</h4>
                                 <p className="text-sm">
-                                    While Gatschet (1890) used complex phonetic notation, this app utilizes simplified spellings often found in modern tribal educational resources to make the language accessible to beginners.
+                                    This app supports the mission of the <strong>Klamath Tribes Language Department</strong> to "keep alive and revitalize the Klamath Language."
+                                    <br/><br/>
+                                    <strong>Contact:</strong><br/>
+                                    501 Chiloquin Blvd<br/>
+                                    Chiloquin, OR 97624<br/>
+                                    (541) 783-2219
                                 </p>
                             </div>
                         </div>
