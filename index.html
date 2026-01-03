@@ -1,1 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maklaks Language Learner</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'maklaks-gold': '#dccfb6',
+                        'maklaks-gold-light': '#f0ebdc',
+                        'maklaks-dark': '#2c2925',
+                        'lake-blue': '#164E63',
+                        'lake-blue-light': '#2a6f87',
+                        'ochre': '#bc4749',
+                        'ochre-light': '#d97678',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Noto Serif', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Serif:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f0e8; /* Natural paper/reed tone */
+            color: #2c2925;
+        }
 
+        /* Basket Weave Pattern Background */
+        .basket-bg {
+            background-color: #f3f0e8;
+            background-image: radial-gradient(#dccfb6 1.5px, transparent 1.5px), radial-gradient(#dccfb6 1.5px, #f3f0e8 1.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+
+        /* Geometric Tribal Pattern Border (CSS approximation of basket steps) */
+        .tribal-border-top {
+            position: relative;
+        }
+        .tribal-border-top::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 12px;
+            background-image: 
+                linear-gradient(45deg, #164E63 25%, transparent 25%), 
+                linear-gradient(-45deg, #164E63 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #164E63 75%), 
+                linear-gradient(-45deg, transparent 75%, #164E63 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            opacity: 0.15;
+        }
+        
+        .card-flip { perspective: 1000px; }
+        .card-inner { transition: transform 0.6s; transform-style: preserve-3d; }
+        .card-flip.flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back {
+            position: absolute; width: 100%; height: 100%;
+            -webkit-backface-visibility: hidden; backface-visibility: hidden;
+        }
+        .card-back { transform: rotateY(180deg); }
+
+        .vocab-scroll::-webkit-scrollbar { width: 8px; }
+        .vocab-scroll::-webkit-scrollbar-track { background: #eaddcf; }
+        .vocab-scroll::-webkit-scrollbar-thumb { background: #b0a18e; border-radius: 4px; }
+        .vocab-scroll::-webkit-scrollbar-thumb:hover { background: #8c7e6d; }
+    </style>
+</head>
+<body class="basket-bg">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- SVGs ---
+        const IconBookOpen = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        );
+        const IconBrain = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.5 2A2.5 12.36 0 0 0 7 4.36a2 2 0 0 0-1 3.51 2.89 2.89 0 0 0 0 5.26 2 2 0 0 0 .5 3.74A2.5 12.15 0 0 0 9.5 22a2 2 0 0 0 2-3.87A2.5 12.16 0 0 0 14.5 22a2 2 0 0 0 2.5-5.13 2 2 0 0 0 .5-3.74 2.89 2.89 0 0 0 0-5.26 2 2 0 0 0-1-3.51A2.5 12.36 0 0 0 14.5 2"/><path d="M12 2v20"/></svg>
+        );
+        const IconInfo = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        );
+        const IconChevronRight = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>
+        );
+        const IconRefreshCw = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        );
+        const IconVolume2 = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        );
+        const IconSearch = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        );
+        const IconMenu = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        );
+        const IconX = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 18 12"/></svg>
+        );
+
+        // Data sourced from Gatschet (1890) and modern Klamath Tribes resources
+        const VOCABULARY = [
+            { id: 1, category: "Numbers", maklaks: "Ńaas", english: "One", pronunciation: "Naas" },
+            { id: 2, category: "Numbers", maklaks: "Laap", english: "Two", pronunciation: "Lahp" },
+            { id: 3, category: "Numbers", maklaks: "Ndan", english: "Three", pronunciation: "N-dan" },
+            { id: 4, category: "Numbers", maklaks: "Woniip", english: "Four", pronunciation: "Woh-neep" },
+            { id: 5, category: "Numbers", maklaks: "Ton'ip", english: "Five", pronunciation: "Ton-ip" },
+            { id: 6, category: "Numbers", maklaks: "Nacksept", english: "Six", pronunciation: "Natch-sept" },
+            { id: 7, category: "Numbers", maklaks: "Lapksept", english: "Seven", pronunciation: "Lap-ksept" },
+            { id: 8, category: "Numbers", maklaks: "Ndanksept", english: "Eight", pronunciation: "Ndan-ksept" },
+            { id: 9, category: "Numbers", maklaks: "Nacqeks", english: "Nine", pronunciation: "Natch-qeks" },
+            { id: 10, category: "Numbers", maklaks: "Tewnip", english: "Ten", pronunciation: "Tew-nip" },
+            { id: 11, category: "People", maklaks: "Hiswaqs", english: "Man / Husband", pronunciation: "His-waks" },
+            { id: 12, category: "People", maklaks: "Sn'eweets", english: "Woman / Wife", pronunciation: "Snew-weats" },
+            { id: 13, category: "People", maklaks: "Ptisap", english: "Father", pronunciation: "P-tee-sap" },
+            { id: 14, category: "People", maklaks: "Pk'isap", english: "Mother", pronunciation: "P-key-sap" },
+            { id: 15, category: "People", maklaks: "Maklaks", english: "The People (Indians)", pronunciation: "Mak-laks" },
+            { id: 16, category: "People", maklaks: "M'ok'aak", english: "Baby", pronunciation: "Mok-ahk" },
+            { id: 17, category: "Nature", maklaks: "'Ambo", english: "Water", pronunciation: "Am-boh" },
+            { id: 18, category: "Nature", maklaks: "S'aba", english: "Sun / Moon", pronunciation: "Sah-bah" },
+            { id: 19, category: "Nature", maklaks: "Giiwaas", english: "Crater Lake", pronunciation: "Gee-wahs" },
+            { id: 20, category: "Nature", maklaks: "Kaila", english: "Earth / Ground", pronunciation: "Kai-la" },
+            { id: 21, category: "Animals", maklaks: "Wac", english: "Horse", pronunciation: "Watch" },
+            { id: 22, category: "Animals", maklaks: "Wac'aak", english: "Dog", pronunciation: "Watch-ahk" },
+            { id: 23, category: "Animals", maklaks: "K'oly'aa", english: "Coyote", pronunciation: "Kol-yah" },
+            { id: 24, category: "Animals", maklaks: "Wit'eem", english: "Black Bear", pronunciation: "Wit-eem" },
+            { id: 25, category: "Animals", maklaks: "Lilhanks", english: "Deer", pronunciation: "Lil-hanks" },
+            { id: 26, category: "Animals", maklaks: "C'waam", english: "Sucker Fish", pronunciation: "Ch-wahm" },
+            { id: 27, category: "Colors", maklaks: "Taktakli", english: "Red", pronunciation: "Tak-tak-lee" },
+            { id: 28, category: "Colors", maklaks: "Balbali", english: "White", pronunciation: "Bal-bah-lee" },
+            { id: 29, category: "Colors", maklaks: "Bosbosli", english: "Black", pronunciation: "Bos-bos-lee" },
+            { id: 30, category: "Colors", maklaks: "Mecmecli", english: "Blue", pronunciation: "Metch-metch-lee" },
+            { id: 31, category: "Colors", maklaks: "Gekgekli", english: "Yellow", pronunciation: "Gek-gek-lee" },
+            { id: 32, category: "Phrases", maklaks: "Waq lis ? i", english: "How are you?", pronunciation: "Wok-lis-ee" },
+            { id: 33, category: "Phrases", maklaks: "Moo dic", english: "Very good", pronunciation: "Moo-ditch" },
+            { id: 34, category: "Phrases", maklaks: "Sepk'eec'a", english: "Thank you", pronunciation: "Sep-kee-cha" }
+        ];
+
+        // --- Components ---
+
+        const NavButton = ({ active, label, icon: Icon, onClick }) => (
+            <button
+                onClick={onClick}
+                className={`flex items-center space-x-3 px-5 py-3 rounded-lg transition-all duration-300 w-full text-left border ${
+                    active 
+                    ? 'bg-lake-blue text-white shadow-lg border-lake-blue transform scale-105' 
+                    : 'bg-maklaks-gold-light text-maklaks-dark border-transparent hover:bg-white hover:border-maklaks-gold hover:text-lake-blue'
+                }`}
+            >
+                <Icon size={20} className={active ? 'text-white' : 'text-ochre'} />
+                <span className="font-serif tracking-wide">{label}</span>
+            </button>
+        );
+
+        const VocabularySection = () => {
+            const [searchTerm, setSearchTerm] = useState("");
+            const [selectedCategory, setSelectedCategory] = useState("All");
+
+            const categories = ["All", ...new Set(VOCABULARY.map(v => v.category))];
+
+            const filteredVocab = VOCABULARY.filter(item => {
+                const matchesSearch = item.english.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                    item.maklaks.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+                return matchesSearch && matchesCategory;
+            });
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-maklaks-gold-light/90 p-6 rounded-t-sm rounded-b-xl shadow-md border-t-4 border-lake-blue tribal-border-top backdrop-blur-sm">
+                        
+                        {/* Search & Filter */}
+                        <div className="flex flex-col md:flex-row gap-4 mb-6">
+                            <div className="relative flex-1">
+                                <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-lake-blue" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search words..."
+                                    className="w-full pl-10 pr-4 py-3 bg-white border border-maklaks-gold rounded-lg focus:outline-none focus:ring-2 focus:ring-lake-blue text-maklaks-dark placeholder-gray-400 font-serif"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+                                {categories.map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setSelectedCategory(cat)}
+                                        className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors border-b-2 font-serif ${
+                                            selectedCategory === cat
+                                            ? 'bg-lake-blue text-white border-lake-blue shadow-md'
+                                            : 'bg-white text-maklaks-dark border-maklaks-gold hover:bg-maklaks-gold hover:text-white'
+                                        }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Card Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto vocab-scroll pr-2">
+                            {filteredVocab.map(item => (
+                                <div key={item.id} className="group relative p-5 rounded-lg bg-white border border-maklaks-gold shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                                    
+                                    {/* Geometric accent corner */}
+                                    <div className="absolute top-0 right-0 w-0 h-0 border-l-[24px] border-l-transparent border-t-[24px] border-t-ochre opacity-80 rounded-tr-lg"></div>
+
+                                    <div className="flex justify-between items-start mb-3">
+                                        <span className="text-xs font-bold text-ochre uppercase tracking-widest">{item.category}</span>
+                                        <IconVolume2 size={16} className="text-maklaks-gold hover:text-lake-blue transition-colors cursor-pointer" />
+                                    </div>
+                                    <h3 className="text-2xl font-serif font-bold text-lake-blue mb-1">{item.maklaks}</h3>
+                                    <p className="text-gray-500 italic mb-3 text-sm font-sans">"{item.pronunciation}"</p>
+                                    
+                                    <div className="h-px bg-gradient-to-r from-transparent via-maklaks-gold to-transparent my-2"></div>
+                                    
+                                    <p className="text-maklaks-dark font-medium text-lg">{item.english}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const FlashcardsSection = () => {
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [isFlipped, setIsFlipped] = useState(false);
+            const [cards, setCards] = useState([]);
+
+            useEffect(() => {
+                setCards([...VOCABULARY].sort(() => Math.random() - 0.5));
+            }, []);
+
+            const handleNext = () => {
+                setIsFlipped(false);
+                setTimeout(() => setCurrentIndex((prev) => (prev + 1) % cards.length), 300);
+            };
+
+            const handlePrev = () => {
+                setIsFlipped(false);
+                setTimeout(() => setCurrentIndex((prev) => (prev - 1 + cards.length) % cards.length), 300);
+            };
+
+            if (cards.length === 0) return null;
+            const currentCard = cards[currentIndex];
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[500px] animate-in fade-in zoom-in duration-500">
+                    <div className="w-full max-w-md perspective-1000 group cursor-pointer" onClick={() => setIsFlipped(!isFlipped)}>
+                        <div className={`relative w-full h-96 transition-all duration-700 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`} style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
+                            
+                            {/* Front Card */}
+                            <div className="absolute w-full h-full bg-white rounded-xl shadow-xl border-2 border-maklaks-gold p-8 flex flex-col items-center justify-center backface-hidden" style={{ backfaceVisibility: 'hidden' }}>
+                                {/* Decorative corners */}
+                                <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-lake-blue"></div>
+                                <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-lake-blue"></div>
+                                <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-lake-blue"></div>
+                                <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-lake-blue"></div>
+
+                                <span className="text-xs font-bold text-ochre uppercase tracking-widest mb-6">English</span>
+                                <h3 className="text-4xl font-serif font-bold text-maklaks-dark text-center leading-relaxed">{currentCard.english}</h3>
+                                <p className="mt-8 text-sm text-lake-blue font-medium animate-pulse">Tap to reveal Maklaks</p>
+                            </div>
+
+                            {/* Back Card */}
+                            <div className="absolute w-full h-full bg-lake-blue text-white rounded-xl shadow-xl border-4 border-ochre p-8 flex flex-col items-center justify-center backface-hidden overflow-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                                {/* Subtle pattern overlay */}
+                                <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHBhdGggZD0iTTEwIDAgTDIwIDEwIEwxMCAyMCAwIDEwIFoiIGZpbGw9IiNmZmYiLz48L3N2Zz4=')]"></div>
+                                
+                                <span className="relative z-10 text-xs font-bold text-maklaks-gold uppercase tracking-widest mb-4">Maklaks</span>
+                                <h3 className="relative z-10 text-5xl font-serif font-bold text-white text-center mb-2">{currentCard.maklaks}</h3>
+                                <p className="relative z-10 text-maklaks-gold text-xl italic mb-6">"{currentCard.pronunciation}"</p>
+                                <span className="relative z-10 px-4 py-1 bg-ochre rounded-full text-xs font-bold tracking-wide">{currentCard.category}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Navigation */}
+                    <div className="flex items-center gap-8 mt-12">
+                        <button onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="p-4 rounded-full bg-white shadow-lg border border-maklaks-gold text-lake-blue hover:bg-lake-blue hover:text-white transition-all transform hover:scale-110">
+                            <IconChevronRight className="transform rotate-180" />
+                        </button>
+                        <div className="flex flex-col items-center">
+                            <span className="text-2xl font-serif font-bold text-lake-blue">{currentIndex + 1}</span>
+                            <span className="text-xs text-ochre uppercase font-bold tracking-widest">of {cards.length}</span>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); handleNext(); }} className="p-4 rounded-full bg-white shadow-lg border border-maklaks-gold text-lake-blue hover:bg-lake-blue hover:text-white transition-all transform hover:scale-110">
+                            <IconChevronRight />
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const QuizSection = () => {
+            const [question, setQuestion] = useState(null);
+            const [options, setOptions] = useState([]);
+            const [score, setScore] = useState(0);
+            const [total, setTotal] = useState(0);
+            const [feedback, setFeedback] = useState(null);
+
+            const generateQuestion = () => {
+                const randomIdx = Math.floor(Math.random() * VOCABULARY.length);
+                const correct = VOCABULARY[randomIdx];
+                const incorrect = VOCABULARY.filter(i => i.id !== correct.id).sort(() => Math.random() - 0.5).slice(0, 3);
+                const allOptions = [correct, ...incorrect].sort(() => Math.random() - 0.5);
+                setQuestion(correct);
+                setOptions(allOptions);
+                setFeedback(null);
+            };
+
+            useEffect(() => { generateQuestion(); }, []);
+
+            const handleAnswer = (selected) => {
+                if (feedback) return;
+                const isCorrect = selected.id === question.id;
+                setTotal(prev => prev + 1);
+                if (isCorrect) setScore(prev => prev + 1);
+                setFeedback(isCorrect ? 'correct' : 'incorrect');
+                setTimeout(() => generateQuestion(), 1500);
+            };
+
+            if (!question) return <div>Loading...</div>;
+
+            return (
+                <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-500">
+                    <div className="bg-white rounded-xl shadow-xl border-2 border-maklaks-gold overflow-hidden">
+                        <div className="bg-lake-blue p-6 text-white flex justify-between items-center relative overflow-hidden">
+                            {/* Tribal pattern background overlay */}
+                            <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjAgTDEwIDEwIEwyMCAyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=')]"></div>
+                            
+                            <h2 className="relative z-10 text-xl font-serif font-bold tracking-wide">Quiz Mode</h2>
+                            <div className="relative z-10 bg-ochre px-4 py-1 rounded-full text-sm font-bold shadow-sm">
+                                Score: {score}/{total}
+                            </div>
+                        </div>
+                        
+                        <div className="p-8">
+                            <h3 className="text-center text-ochre text-sm font-bold uppercase tracking-widest mb-4">Translate</h3>
+                            <h2 className="text-center text-5xl font-serif font-bold text-maklaks-dark mb-10 pb-6 border-b border-maklaks-gold-light">{question.english}</h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {options.map((opt) => (
+                                    <button
+                                        key={opt.id}
+                                        onClick={() => handleAnswer(opt)}
+                                        disabled={feedback !== null}
+                                        className={`p-5 rounded-lg text-lg font-serif font-bold transition-all duration-200 border-2 shadow-sm
+                                            ${feedback === null 
+                                                ? 'bg-maklaks-gold-light border-transparent hover:border-lake-blue hover:bg-white hover:text-lake-blue' 
+                                                : feedback === 'correct' && opt.id === question.id
+                                                    ? 'bg-lake-blue border-lake-blue text-white'
+                                                    : feedback === 'incorrect' && opt.id === question.id
+                                                        ? 'bg-lake-blue border-lake-blue text-white' // Reveal correct
+                                                        : 'opacity-40 bg-gray-100'
+                                            }
+                                        `}
+                                    >
+                                        {opt.maklaks}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            {feedback && (
+                                <div className={`mt-8 text-center font-bold p-4 rounded-lg animate-bounce ${feedback === 'correct' ? 'text-lake-blue bg-blue-50' : 'text-ochre bg-red-50'}`}>
+                                    {feedback === 'correct' ? 'Correct! 🎉' : `Incorrect. The answer is ${question.maklaks}.`}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const AboutSection = () => (
+            <div className="space-y-6 animate-in fade-in duration-700">
+                <div className="bg-white p-10 rounded-xl shadow-sm border border-maklaks-gold tribal-border-top">
+                    <h2 className="text-4xl font-serif font-bold text-lake-blue mb-8 border-b-2 border-maklaks-gold pb-4">Language & Land</h2>
+                    <div className="prose text-maklaks-dark max-w-none space-y-6 font-serif leading-relaxed">
+                        <p className="text-lg">
+                            The language featured in this app is <strong>Klamath-Modoc</strong>, traditionally known by the people as <strong>Maklaks</strong> (meaning "The People"). It is a Plateau Penutian language spoken historically around the wetlands of Klamath Lake and the lava plateaus of the Modoc region.
+                        </p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
+                            <div className="bg-maklaks-gold-light p-6 rounded-lg border-l-4 border-lake-blue">
+                                <h4 className="font-bold text-lake-blue text-xl mb-2 font-sans">Basketry & Tule</h4>
+                                <p className="text-sm">
+                                    The app's design is inspired by the intricate basketry of the Klamath and Modoc. Woven from <strong>tule</strong> (marsh reed) and cattails found in the vast marshes, these baskets use geometric "step" patterns and triangles, often dyed with mud or roots.
+                                </p>
+                            </div>
+                            <div className="bg-maklaks-gold-light p-6 rounded-lg border-l-4 border-ochre">
+                                <h4 className="font-bold text-ochre text-xl mb-2 font-sans">Orthography Note</h4>
+                                <p className="text-sm">
+                                    While Gatschet (1890) used complex phonetic notation, this app utilizes simplified spellings often found in modern tribal educational resources to make the language accessible to beginners.
+                                </p>
+                            </div>
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-lake-blue mt-8 mb-4">Sacred Geography</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-lake-blue text-white p-5 rounded-lg shadow-md relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-black opacity-10 group-hover:opacity-0 transition-opacity"></div>
+                                <h4 className="font-bold text-lg mb-1 relative z-10">Giiwaas</h4>
+                                <p className="text-sm text-gray-200 relative z-10">Crater Lake</p>
+                            </div>
+                            <div className="bg-ochre text-white p-5 rounded-lg shadow-md relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-black opacity-10 group-hover:opacity-0 transition-opacity"></div>
+                                <h4 className="font-bold text-lg mb-1 relative z-10">Móatni</h4>
+                                <p className="text-sm text-gray-200 relative z-10">The South (Modoc Country)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('learn');
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+            const renderContent = () => {
+                switch(activeTab) {
+                    case 'learn': return <VocabularySection />;
+                    case 'practice': return <FlashcardsSection />;
+                    case 'quiz': return <QuizSection />;
+                    case 'about': return <AboutSection />;
+                    default: return <VocabularySection />;
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col md:flex-row max-w-[1600px] mx-auto shadow-2xl bg-white/50">
+                    
+                    {/* Mobile Header */}
+                    <div className="md:hidden bg-lake-blue text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-maklaks-gold text-lake-blue rounded flex items-center justify-center font-serif font-bold">M</div>
+                            <h1 className="font-serif font-bold text-lg tracking-wide">Maklaks Learner</h1>
+                        </div>
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                            {isMenuOpen ? <IconX /> : <IconMenu />}
+                        </button>
+                    </div>
+
+                    {/* Sidebar / Navigation */}
+                    <aside className={`
+                        fixed md:static inset-y-0 left-0 z-40 w-72 bg-white border-r border-maklaks-gold transform transition-transform duration-300 ease-in-out
+                        ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+                        md:translate-x-0 flex flex-col
+                    `}>
+                        <div className="p-8 hidden md:block border-b border-maklaks-gold-light bg-maklaks-gold-light/30">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-lake-blue rounded-lg flex items-center justify-center text-white shadow-lg border-2 border-ochre rotate-3">
+                                    <span className="font-serif font-bold text-2xl">M</span>
+                                </div>
+                                <div>
+                                    <h1 className="font-serif font-bold text-xl text-lake-blue tracking-tight">Maklaks</h1>
+                                    <p className="text-xs text-ochre font-bold uppercase tracking-widest">Language</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <nav className="flex-1 px-4 py-8 space-y-3 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTAgMjAgTDIwIDAgTDQwIDIwIEwyMCA0MCBaIiBmaWxsPSIjMDAwIi8+PC9zdmc+')]">
+                            <NavButton active={activeTab === 'learn'} label="Dictionary" icon={IconBookOpen} onClick={() => { setActiveTab('learn'); setIsMenuOpen(false); }} />
+                            <NavButton active={activeTab === 'practice'} label="Flashcards" icon={IconRefreshCw} onClick={() => { setActiveTab('practice'); setIsMenuOpen(false); }} />
+                            <NavButton active={activeTab === 'quiz'} label="Quiz" icon={IconBrain} onClick={() => { setActiveTab('quiz'); setIsMenuOpen(false); }} />
+                            <NavButton active={activeTab === 'about'} label="Heritage" icon={IconInfo} onClick={() => { setActiveTab('about'); setIsMenuOpen(false); }} />
+                        </nav>
+
+                        <div className="p-6 bg-maklaks-gold-light/50 border-t border-maklaks-gold">
+                            <div className="bg-white rounded-lg p-4 border border-maklaks-gold shadow-sm">
+                                <h4 className="font-bold text-lake-blue text-sm mb-1 font-serif">Word of the Day</h4>
+                                <p className="text-lg font-bold text-ochre">Sepk'eec'a</p>
+                                <p className="text-xs text-gray-500 italic">"Thank you"</p>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto h-screen relative">
+                        {/* Header Background Decoration */}
+                        <div className="absolute top-0 left-0 w-full h-48 bg-gradient-to-b from-white to-transparent -z-10"></div>
+
+                        <header className="mb-10 hidden md:block">
+                            <h2 className="text-4xl font-serif font-bold text-lake-blue mb-2">
+                                {activeTab === 'learn' && "Dictionary"}
+                                {activeTab === 'practice' && "Practice"}
+                                {activeTab === 'quiz' && "Test Your Knowledge"}
+                                {activeTab === 'about' && "About Maklaks"}
+                            </h2>
+                            <div className="h-1 w-20 bg-ochre mb-4 rounded-full"></div>
+                            <p className="text-maklaks-dark text-lg font-serif italic opacity-80">
+                                {activeTab === 'learn' && "Preserving the words of the ancestors."}
+                                {activeTab === 'practice' && "Strengthen your memory with traditional methods."}
+                                {activeTab === 'quiz' && "Challenge yourself."}
+                                {activeTab === 'about' && "The history of the People."}
+                            </p>
+                        </header>
+                        
+                        {renderContent()}
+                    </main>
+
+                    {/* Mobile Menu Overlay */}
+                    {isMenuOpen && (
+                        <div className="fixed inset-0 bg-lake-blue/80 backdrop-blur-sm z-30 md:hidden" onClick={() => setIsMenuOpen(false)}></div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
