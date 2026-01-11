@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   BookOpen, 
   Brain, 
@@ -250,6 +250,9 @@ export default function App() {
   );
 
   const LearnScreen = () => {
+    // Safety guard
+    if (!activeCategory) return null;
+    
     const word = activeCategory.words[currentIndex];
     
     return (
@@ -321,6 +324,9 @@ export default function App() {
   };
 
   const QuizScreen = () => {
+    // Safety guard
+    if (!activeCategory) return null;
+    
     const word = activeCategory.words[currentIndex];
     
     const options = React.useMemo(() => {
@@ -373,12 +379,21 @@ export default function App() {
   };
 
   const ResultScreen = () => {
+    // Safety guard
+    if (!activeCategory) return null;
+
     const percentage = Math.round((quizScore / activeCategory.words.length) * 100);
     const isSuccess = percentage >= 70;
+    
+    // Ref to prevent double-firing in Strict Mode
+    const processedRef = useRef(false);
 
     useEffect(() => {
-        if(isSuccess) setXp(prev => prev + 100);
-    }, []);
+        if(isSuccess && !processedRef.current) {
+            setXp(prev => prev + 100);
+            processedRef.current = true;
+        }
+    }, [isSuccess]);
 
     return (
       <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto animate-in zoom-in-95 duration-500 bg-white p-6 rounded-3xl border-4 border-black">
