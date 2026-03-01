@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Klamath Language Learner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, .serif { font-family: 'Merriweather', serif; }
+
+    /* Medicine Wheel ring */
+    .wheel-ring {
+      background: conic-gradient(
+        #d4a017 0deg 90deg,
+        #b91c1c 90deg 180deg,
+        #1a1a1a 180deg 270deg,
+        #f8fafc 270deg 360deg
+      );
+    }
+
+    /* Flashcard flip */
+    .card-scene { perspective: 1000px; }
+    .card-flip { transition: transform 0.55s; transform-style: preserve-3d; }
+    .card-flip.flipped { transform: rotateY(180deg); }
+    .card-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+    .card-back { transform: rotateY(180deg); }
+
+    /* Fade in */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.4s ease both; }
+
+    /* Drag styles */
+    .word-chip { cursor: grab; user-select: none; touch-action: none; }
+    .word-chip:active { cursor: grabbing; }
+    .word-chip.dragging { opacity: 0.4; }
+    .drop-zone.drag-over { background-color: rgba(212, 160, 23, 0.15); border-color: #d4a017; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+<!-- ===== APP SHELL ===== -->
+<div id="app" class="max-w-3xl mx-auto bg-white min-h-screen flex flex-col shadow-2xl">
+
+  <!-- HEADER -->
+  <header class="bg-black text-white px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-lg">
+    <!-- Medicine Wheel branding -->
+    <div class="flex items-center gap-3">
+      <div class="relative w-10 h-10 rounded-full wheel-ring p-[3px] flex-shrink-0">
+        <div class="w-full h-full rounded-full bg-black flex items-center justify-center">
+          <span class="text-yellow-400 font-black text-xs">K</span>
+        </div>
+      </div>
+      <div>
+        <h1 class="text-lg font-black tracking-tight leading-none serif">Klamath</h1>
+        <p class="text-yellow-400 text-[10px] font-semibold tracking-widest uppercase">Language Learner</p>
+      </div>
+    </div>
+    <!-- English toggle -->
+    <button id="toggleEnglishBtn" onclick="toggleEnglish()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+      <i data-lucide="eye" class="w-4 h-4"></i>
+      <span id="toggleLabel">Hide English</span>
+    </button>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="flex border-b-4 border-slate-200 bg-white sticky top-[72px] z-30">
+    <button onclick="showView('vocab')" data-tab="vocab"
+      class="tab-btn flex-1 py-3 text-xs font-black uppercase tracking-wider flex flex-col items-center gap-1 border-b-4 border-yellow-500 text-black transition-colors">
+      <i data-lucide="book-open" class="w-5 h-5"></i>Vocabulary
+    </button>
+    <button onclick="showView('builder')" data-tab="builder"
+      class="tab-btn flex-1 py-3 text-xs font-black uppercase tracking-wider flex flex-col items-center gap-1 border-b-4 border-transparent text-slate-400 hover:text-black transition-colors">
+      <i data-lucide="layout-list" class="w-5 h-5"></i>Sentence Builder
+    </button>
+    <button onclick="showView('culture')" data-tab="culture"
+      class="tab-btn flex-1 py-3 text-xs font-black uppercase tracking-wider flex flex-col items-center gap-1 border-b-4 border-transparent text-slate-400 hover:text-black transition-colors">
+      <i data-lucide="landmark" class="w-5 h-5"></i>Culture &amp; History
+    </button>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 overflow-y-auto">
+
+    <!-- ========== VIEW: VOCABULARY ========== -->
+    <div id="view-vocab" class="fade-in">
+
+      <!-- Category filter -->
+      <div class="px-4 pt-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+        <button onclick="filterCategory('all')" data-cat="all"
+          class="cat-filter-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-black text-white border-2 border-black transition-colors">
+          All
+        </button>
+        <button onclick="filterCategory('people')" data-cat="people"
+          class="cat-filter-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border-2 border-slate-300 hover:border-black transition-colors">
+          People &amp; Family
+        </button>
+        <button onclick="filterCategory('verbs')" data-cat="verbs"
+          class="cat-filter-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border-2 border-slate-300 hover:border-black transition-colors">
+          Verbs
+        </button>
+        <button onclick="filterCategory('nouns')" data-cat="nouns"
+          class="cat-filter-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border-2 border-slate-300 hover:border-black transition-colors">
+          Nouns
+        </button>
+        <button onclick="filterCategory('adjectives')" data-cat="adjectives"
+          class="cat-filter-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border-2 border-slate-300 hover:border-black transition-colors">
+          Adjectives
+        </button>
+        <button onclick="filterCategory('numbers')" data-cat="numbers"
+          class="cat-filter-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-600 border-2 border-slate-300 hover:border-black transition-colors">
+          Numbers
+        </button>
+      </div>
+
+      <!-- Flashcard area -->
+      <div class="px-4 pb-4">
+        <div id="flashcard-container" class="space-y-3"></div>
+        <p id="no-words-msg" class="hidden text-center text-slate-400 py-12 text-sm">No words in this category yet.</p>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: SENTENCE BUILDER ========== -->
+    <div id="view-builder" class="hidden fade-in px-4 py-6">
+      <div class="mb-4">
+        <h2 class="serif text-xl font-bold text-black mb-1">Sentence Builder</h2>
+        <p class="text-slate-500 text-sm">Drag words from the bank into the sentence strip to form a sentence. Press <strong>Play</strong> to hear it.</p>
+      </div>
+
+      <!-- Sentence strip (drop zone) -->
+      <div id="sentence-strip"
+        class="drop-zone min-h-[72px] border-4 border-dashed border-slate-300 rounded-2xl p-3 flex flex-wrap gap-2 mb-3 items-center transition-colors bg-slate-50"
+        ondragover="onDragOver(event)" ondrop="onDrop(event, 'strip')" ondragleave="onDragLeave(event)">
+        <p id="strip-placeholder" class="text-slate-400 text-sm select-none w-full text-center">Drop words here…</p>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex gap-2 mb-5">
+        <button onclick="playSentence()" class="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-black px-4 py-2 rounded-xl text-sm transition-colors shadow">
+          <i data-lucide="volume-2" class="w-4 h-4"></i> Play
+        </button>
+        <button onclick="clearSentence()" class="flex items-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-2 rounded-xl text-sm transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i> Clear
+        </button>
+      </div>
+
+      <!-- Word bank label -->
+      <p class="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Word Bank</p>
+      <!-- Word bank (source) -->
+      <div id="word-bank"
+        class="drop-zone border-2 border-slate-200 rounded-2xl p-3 flex flex-wrap gap-2 min-h-[60px] transition-colors bg-white"
+        ondragover="onDragOver(event)" ondrop="onDrop(event, 'bank')" ondragleave="onDragLeave(event)">
+      </div>
+
+      <!-- Quick-pick category for builder -->
+      <div class="mt-4">
+        <p class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Load category into bank:</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="loadBuilderCategory('people')" class="px-3 py-1 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg text-xs font-bold hover:bg-yellow-200 transition-colors">People</button>
+          <button onclick="loadBuilderCategory('verbs')" class="px-3 py-1 bg-red-100 text-red-800 border border-red-300 rounded-lg text-xs font-bold hover:bg-red-200 transition-colors">Verbs</button>
+          <button onclick="loadBuilderCategory('nouns')" class="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">Nouns</button>
+          <button onclick="loadBuilderCategory('adjectives')" class="px-3 py-1 bg-blue-100 text-blue-800 border border-blue-300 rounded-lg text-xs font-bold hover:bg-blue-200 transition-colors">Adjectives</button>
+          <button onclick="loadBuilderCategory('all')" class="px-3 py-1 bg-black text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors">All Words</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: CULTURE & HISTORY ========== -->
+    <div id="view-culture" class="hidden fade-in">
+
+      <!-- Hero banner -->
+      <div class="relative overflow-hidden bg-black text-white px-6 py-10">
+        <div class="absolute inset-0 opacity-10">
+          <div class="wheel-ring w-64 h-64 rounded-full absolute -right-16 -top-16"></div>
+        </div>
+        <div class="relative z-10">
+          <p class="text-yellow-400 text-xs font-black uppercase tracking-widest mb-2">Klamath Tribes</p>
+          <h2 class="serif text-3xl font-black leading-tight mb-3">The Three Peoples</h2>
+          <p class="text-slate-300 text-sm leading-relaxed max-w-lg">
+            The Klamath Tribes is a confederation of three distinct but related peoples who have lived in the Klamath Basin of south-central Oregon and northern California since time immemorial.
+          </p>
+        </div>
+      </div>
+
+      <div class="px-4 py-6 space-y-6">
+
+        <!-- Three peoples cards -->
+        <section>
+          <h3 class="serif text-lg font-bold text-black mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-yellow-500"></span> The Three Peoples
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="rounded-2xl border-2 border-yellow-400 bg-yellow-50 p-4">
+              <div class="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center mb-3">
+                <i data-lucide="sun" class="w-5 h-5 text-black"></i>
+              </div>
+              <h4 class="font-black text-black mb-1">Klamath</h4>
+              <p class="text-xs text-slate-600 leading-relaxed">The Klamath people (Eukshikni Maqlaqsanak) lived around Upper Klamath Lake and the Klamath River. Their name means "People of the Lake."</p>
+            </div>
+            <div class="rounded-2xl border-2 border-red-400 bg-red-50 p-4">
+              <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center mb-3">
+                <i data-lucide="flame" class="w-5 h-5 text-white"></i>
+              </div>
+              <h4 class="font-black text-black mb-1">Modoc</h4>
+              <p class="text-xs text-slate-600 leading-relaxed">The Modoc (Móatokni Maqlaqsanak) lived around Tule Lake and Lower Klamath Lake in California. Known for the Modoc War of 1872–73.</p>
+            </div>
+            <div class="rounded-2xl border-2 border-slate-400 bg-slate-50 p-4">
+              <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center mb-3">
+                <i data-lucide="wind" class="w-5 h-5 text-white"></i>
+              </div>
+              <h4 class="font-black text-black mb-1">Yahooskin</h4>
+              <p class="text-xs text-slate-600 leading-relaxed">The Yahooskin Band of Snake Paiute joined the confederation. They were semi-nomadic people of the high desert to the east.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Historical Timeline -->
+        <section>
+          <h3 class="serif text-lg font-bold text-black mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-red-600"></span> Historical Timeline
+          </h3>
+          <div class="relative border-l-4 border-slate-200 pl-6 space-y-6 ml-2">
+            <div id="timeline-items"></div>
+          </div>
+        </section>
+
+        <!-- Language info -->
+        <section class="bg-black text-white rounded-2xl p-5">
+          <h3 class="serif text-lg font-bold mb-2">About the Klamath Language</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-3">
+            The Klamath language (also called Klamath-Modoc) is a language isolate — it is not demonstrably related to any other language family. It is spoken natively by very few elders and is considered critically endangered.
+          </p>
+          <p class="text-slate-300 text-sm leading-relaxed mb-3">
+            The Klamath Tribes Cultural Programs department works to revitalize the language through education programs, recordings, and resources like this app.
+          </p>
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <div class="bg-slate-800 rounded-xl p-3 text-center">
+              <div class="text-yellow-400 text-2xl font-black">~35</div>
+              <div class="text-xs text-slate-400 uppercase tracking-wide">Native speakers</div>
+            </div>
+            <div class="bg-slate-800 rounded-xl p-3 text-center">
+              <div class="text-yellow-400 text-2xl font-black">Isolate</div>
+              <div class="text-xs text-slate-400 uppercase tracking-wide">Language family</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Medicine Wheel explanation -->
+        <section>
+          <h3 class="serif text-lg font-bold text-black mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-black"></span> The Medicine Wheel
+          </h3>
+          <p class="text-slate-600 text-sm leading-relaxed mb-4">
+            The Medicine Wheel is a sacred symbol for many Plains and Plateau peoples. Its four quadrants represent directions, seasons, and aspects of life:
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-yellow-50 border border-yellow-200">
+              <div class="w-8 h-8 rounded-full bg-yellow-400 flex-shrink-0"></div>
+              <div>
+                <p class="font-bold text-xs text-black">East — Yellow</p>
+                <p class="text-xs text-slate-500">New beginnings, spring, youth</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-200">
+              <div class="w-8 h-8 rounded-full bg-red-600 flex-shrink-0"></div>
+              <div>
+                <p class="font-bold text-xs text-black">South — Red</p>
+                <p class="text-xs text-slate-500">Growth, summer, adulthood</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-100 border border-slate-300">
+              <div class="w-8 h-8 rounded-full bg-black flex-shrink-0"></div>
+              <div>
+                <p class="font-bold text-xs text-black">West — Black</p>
+                <p class="text-xs text-slate-500">Introspection, autumn, maturity</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div class="w-8 h-8 rounded-full bg-white border-2 border-slate-400 flex-shrink-0"></div>
+              <div>
+                <p class="font-bold text-xs text-black">North — White</p>
+                <p class="text-xs text-slate-500">Wisdom, winter, elders</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-black text-white px-6 py-5 text-center">
+    <div class="flex justify-center mb-3">
+      <div class="w-12 h-12 rounded-full wheel-ring p-[3px]">
+        <div class="w-full h-full rounded-full bg-black flex items-center justify-center">
+          <span class="text-yellow-400 font-black text-sm serif">K</span>
+        </div>
+      </div>
+    </div>
+    <p class="serif text-sm font-bold text-yellow-400 mb-1">Klamath Language Learner</p>
+    <p class="text-slate-500 text-xs">Created in partnership with Klamath Tribal Cultural Programs</p>
+    <p class="text-slate-600 text-xs mt-1">Preserving the Klamath language — one word at a time.</p>
+  </footer>
+
+</div><!-- /app -->
+
+<script>
+// ===========================
+// DATA
+// ===========================
+const VOCAB = [
+  // People / Family / Pronouns
+  { id:1,  klamath:"Ni",          english:"I / Me",        phonetic:"nee",            category:"people" },
+  { id:2,  klamath:"Mbi",         english:"You",           phonetic:"mbee",           category:"people" },
+  { id:3,  klamath:"Maqlaqs",     english:"Person / Man",  phonetic:"mock-locks",     category:"people" },
+  { id:4,  klamath:"Laki",        english:"Old Man",       phonetic:"lah-kee",        category:"people" },
+  { id:5,  klamath:"Ewksiknii",   english:"Klamath People",phonetic:"ewk-sick-nee",   category:"people" },
+  { id:6,  klamath:"Ptisap",      english:"Father",        phonetic:"p-tea-sop",      category:"people" },
+  { id:7,  klamath:"Pkisap",      english:"Mother",        phonetic:"p-key-sop",      category:"people" },
+  { id:8,  klamath:"M'ok'aak",    english:"Baby",          phonetic:"m-ok-awk",       category:"people" },
+  { id:9,  klamath:"Lisaanks",    english:"Children",      phonetic:"lee-sahnks",     category:"people" },
+  { id:10, klamath:"Wii",         english:"Woman",         phonetic:"wee",            category:"people" },
+  { id:11, klamath:"Kak",         english:"Son",           phonetic:"kahk",           category:"people" },
+  { id:12, klamath:"Wewas",       english:"Daughter",      phonetic:"way-wahs",       category:"people" },
+  { id:13, klamath:"Gakni",       english:"Old Woman",     phonetic:"gahk-nee",       category:"people" },
+
+  // Verbs
+  { id:14, klamath:"Nee",         english:"Eat",           phonetic:"nay",            category:"verbs"  },
+  { id:15, klamath:"Lii",         english:"Drink",         phonetic:"lee",            category:"verbs"  },
+  { id:16, klamath:"Waas",        english:"See",           phonetic:"wahss",          category:"verbs"  },
+  { id:17, klamath:"Sas",         english:"Tell / Say",    phonetic:"sahss",          category:"verbs"  },
+  { id:18, klamath:"Wii",         english:"Make / Work",   phonetic:"wee",            category:"verbs"  },
+  { id:19, klamath:"Sliiwi",      english:"Sing",          phonetic:"slee-wee",       category:"verbs"  },
+  { id:20, klamath:"Gii",         english:"Go",            phonetic:"ghee",           category:"verbs"  },
+  { id:21, klamath:"Naas",        english:"Come",          phonetic:"nahss",          category:"verbs"  },
+
+  // Nouns
+  { id:22, klamath:"Maqiqs",      english:"Hand",          phonetic:"mah-keeks",      category:"nouns"  },
+  { id:23, klamath:"Laagi",       english:"Head",          phonetic:"lah-ghee",       category:"nouns"  },
+  { id:24, klamath:"Skaaga",      english:"Eye",           phonetic:"skah-gah",       category:"nouns"  },
+  { id:25, klamath:"Skii",        english:"Tongue",        phonetic:"skee",           category:"nouns"  },
+  { id:26, klamath:"Kliila",      english:"Skin",          phonetic:"klee-lah",       category:"nouns"  },
+  { id:27, klamath:"Taan",        english:"Tooth",         phonetic:"tahn",           category:"nouns"  },
+  { id:28, klamath:"C'aam",       english:"Sucker Fish",   phonetic:"chahm",          category:"nouns"  },
+  { id:29, klamath:"Ishlii",      english:"Coyote",        phonetic:"ish-lee",        category:"nouns"  },
+  { id:30, klamath:"Kiuks",       english:"Horse",         phonetic:"key-ooks",       category:"nouns"  },
+  { id:31, klamath:"Yoola",       english:"Water",         phonetic:"yoo-lah",        category:"nouns"  },
+  { id:32, klamath:"P'as",        english:"Food",          phonetic:"pahss",          category:"nouns"  },
+  { id:33, klamath:"Wew",         english:"House",         phonetic:"wew",            category:"nouns"  },
+  { id:34, klamath:"Klamaas",     english:"Klamath Lake",  phonetic:"klah-mahss",     category:"nouns"  },
+  { id:35, klamath:"Giiwas",      english:"Crater Lake",   phonetic:"ghee-wahss",     category:"nouns"  },
+  { id:36, klamath:"Keys",        english:"Snow",          phonetic:"kay-s",          category:"nouns"  },
+  { id:37, klamath:"Slewys",      english:"Wind",          phonetic:"slou-weash",     category:"nouns"  },
+  { id:38, klamath:"We",          english:"Ice",           phonetic:"waa",            category:"nouns"  },
+  { id:39, klamath:"Boo",         english:"Fire",          phonetic:"boo",            category:"nouns"  },
+
+  // Adjectives / Descriptors
+  { id:40, klamath:"Moodic",      english:"Good",          phonetic:"moo-ditch",      category:"adjectives" },
+  { id:41, klamath:"Sii'i",       english:"Bad",           phonetic:"see-ee",         category:"adjectives" },
+  { id:42, klamath:"Mooc",        english:"Many",          phonetic:"mooch",          category:"adjectives" },
+  { id:43, klamath:"Moo",         english:"Very",          phonetic:"moo",            category:"adjectives" },
+  { id:44, klamath:"Tkii",        english:"Hot",           phonetic:"t-kee",          category:"adjectives" },
+  { id:45, klamath:"Waaxs",       english:"Raining",       phonetic:"wahxss",         category:"adjectives" },
+  { id:46, klamath:"Loldam",      english:"Winter",        phonetic:"lool-tum",       category:"adjectives" },
+  { id:47, klamath:"Toks",        english:"Summer",        phonetic:"toks",           category:"adjectives" },
+  { id:48, klamath:"Kniila",      english:"East",          phonetic:"k-nee-lah",      category:"adjectives" },
+  { id:49, klamath:"Sopli",       english:"South",         phonetic:"sop-lee",        category:"adjectives" },
+  { id:50, klamath:"Wetsam",      english:"West",          phonetic:"wet-sahm",       category:"adjectives" },
+  { id:51, klamath:"Tpeni",       english:"North",         phonetic:"t-pay-nee",      category:"adjectives" },
+
+  // Numbers
+  { id:52, klamath:"Naqs",        english:"One",           phonetic:"nahks",          category:"numbers" },
+  { id:53, klamath:"Laap",        english:"Two",           phonetic:"lahp",           category:"numbers" },
+  { id:54, klamath:"Ndan",        english:"Three",         phonetic:"n-dahn",         category:"numbers" },
+  { id:55, klamath:"Wonip",       english:"Four",          phonetic:"woh-nip",        category:"numbers" },
+  { id:56, klamath:"Tonikx",      english:"Five",          phonetic:"toh-niks",       category:"numbers" },
+];
+
+const TIMELINE = [
+  { year: "10,000+ BCE", text: "Ancestors of the Klamath Tribes inhabited the Klamath Basin — one of the longest continuous occupations in North America." },
+  { year: "1826",        text: "First contact with European fur trappers in the region (Peter Skene Ogden expedition)." },
+  { year: "1864",        text: "Klamath Treaty signed — the Klamath, Modoc, and Yahooskin cede 22 million acres and are confined to a 2-million acre reservation." },
+  { year: "1872–1873",   text: "Modoc War: Led by Captain Jack (Kintpuash), the Modoc resisted forced relocation to the Klamath Reservation." },
+  { year: "1954",        text: "Federal Termination Act: The U.S. government terminates federal recognition of the Klamath Tribes, ending trust status and forcing sale of most reservation lands." },
+  { year: "1986",        text: "The Klamath Tribes are restored to federal recognition under the Klamath Indian Tribe Restoration Act." },
+  { year: "Present",     text: "The Klamath Tribes work on language and cultural revitalization, water rights, and the historic dam removal on the Klamath River." },
+];
+
+// ===========================
+// STATE
+// ===========================
+let showEnglish = true;
+let currentCategory = 'all';
+let draggedChip = null;      // { el, word, source }
+let stripWords = [];         // words in the sentence strip
+let bankWords  = [];         // words in the word bank
+
+// ===========================
+// INIT
+// ===========================
+document.addEventListener('DOMContentLoaded', () => {
+  buildTimeline();
+  filterCategory('all');
+  loadBuilderCategory('people');
+  lucide.createIcons();
+});
+
+// ===========================
+// NAVIGATION
+// ===========================
+function showView(name) {
+  ['vocab','builder','culture'].forEach(v => {
+    document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
+  });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const active = btn.dataset.tab === name;
+    btn.classList.toggle('border-yellow-500', active);
+    btn.classList.toggle('text-black', active);
+    btn.classList.toggle('border-transparent', !active);
+    btn.classList.toggle('text-slate-400', !active);
+  });
+  lucide.createIcons();
+}
+
+// ===========================
+// ENGLISH TOGGLE
+// ===========================
+function toggleEnglish() {
+  showEnglish = !showEnglish;
+  document.getElementById('toggleLabel').textContent = showEnglish ? 'Hide English' : 'Show English';
+  document.querySelectorAll('.english-text').forEach(el => {
+    el.classList.toggle('invisible', !showEnglish);
+  });
+}
+
+// ===========================
+// VOCABULARY / FLASHCARDS
+// ===========================
+function filterCategory(cat) {
+  currentCategory = cat;
+  document.querySelectorAll('.cat-filter-btn').forEach(btn => {
+    const active = btn.dataset.cat === cat;
+    btn.classList.toggle('bg-black', active);
+    btn.classList.toggle('text-white', active);
+    btn.classList.toggle('border-black', active);
+    btn.classList.toggle('bg-white', !active);
+    btn.classList.toggle('text-slate-600', !active);
+    btn.classList.toggle('border-slate-300', !active);
+  });
+
+  const words = cat === 'all' ? VOCAB : VOCAB.filter(w => w.category === cat);
+  const container = document.getElementById('flashcard-container');
+  const noMsg = document.getElementById('no-words-msg');
+
+  if (words.length === 0) {
+    container.innerHTML = '';
+    noMsg.classList.remove('hidden');
+    return;
+  }
+  noMsg.classList.add('hidden');
+  container.innerHTML = words.map(w => buildFlashcard(w)).join('');
+  // Apply current english toggle state
+  if (!showEnglish) {
+    container.querySelectorAll('.english-text').forEach(el => el.classList.add('invisible'));
+  }
+  lucide.createIcons();
+  // Attach speak listeners via JS to avoid inline handlers with dynamic data
+  container.querySelectorAll('.speak-btn').forEach(btn => {
+    const wordId = parseInt(btn.dataset.speak);
+    const word = VOCAB.find(w => w.id === wordId);
+    if (word) {
+      btn.addEventListener('click', e => { e.stopPropagation(); speak(null, word.phonetic); });
+    }
+  });
+}
+
+function buildFlashcard(word) {
+  const catColors = {
+    people:     'border-yellow-400',
+    verbs:      'border-red-500',
+    nouns:      'border-slate-400',
+    adjectives: 'border-blue-400',
+    numbers:    'border-green-500',
+  };
+  const border = catColors[word.category] || 'border-slate-300';
+
+  return `
+  <div class="card-scene w-full" style="height:160px;" onclick="flipCard(${word.id})">
+    <div id="card-${word.id}" class="card-flip w-full h-full relative">
+      <!-- Front -->
+      <div class="card-face absolute inset-0 bg-white rounded-2xl border-4 ${border} shadow-md flex flex-col items-center justify-center px-6 py-4 gap-2">
+        <p class="text-2xl font-black text-black text-center serif leading-tight">${word.klamath}</p>
+        <p class="text-xs text-slate-400 font-mono">/${word.phonetic}/</p>
+        <div class="flex items-center gap-3 mt-1">
+          <button data-speak="${word.id}"
+            class="speak-btn flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg text-xs font-bold transition-colors">
+            <i data-lucide="volume-2" class="w-3 h-3"></i> Play
+          </button>
+          <span class="text-slate-300 text-xs">tap to flip</span>
+        </div>
+      </div>
+      <!-- Back -->
+      <div class="card-face card-back absolute inset-0 rounded-2xl border-4 ${border} shadow-md flex flex-col items-center justify-center px-6 py-4 gap-2 bg-slate-900">
+        <p class="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">English</p>
+        <p class="english-text text-2xl font-black text-white text-center leading-tight">${word.english}</p>
+        <span class="text-slate-500 text-xs mt-2">tap to flip back</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function flipCard(id) {
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('flipped');
+}
+
+// ===========================
+// AUDIO (TTS with phonetic)
+// ===========================
+function speak(event, phonetic) {
+  if (event) event.stopPropagation();
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(phonetic);
+  utt.rate = 0.75;
+  utt.lang = 'en-US';
+  const voices = window.speechSynthesis.getVoices();
+  // Prefer non-Google voices for more natural phonetic-English pronunciation
+  const voice = voices.find(v => v.lang === 'en-US' && !v.name.toLowerCase().includes('google'));
+  if (voice) utt.voice = voice;
+  window.speechSynthesis.speak(utt);
+}
+
+// ===========================
+// SENTENCE BUILDER
+// ===========================
+function loadBuilderCategory(cat) {
+  const words = cat === 'all' ? VOCAB : VOCAB.filter(w => w.category === cat);
+  bankWords = words.map(w => ({ ...w }));
+  stripWords = [];
+  renderBuilder();
+}
+
+function renderBuilder() {
+  // Word bank
+  const bank = document.getElementById('word-bank');
+  bank.innerHTML = bankWords.map(w => chipHtml(w, 'bank')).join('');
+
+  // Sentence strip
+  const strip = document.getElementById('sentence-strip');
+  const placeholder = document.getElementById('strip-placeholder');
+  if (stripWords.length === 0) {
+    strip.innerHTML = '';
+    strip.appendChild(placeholder);
+    placeholder.classList.remove('hidden');
+  } else {
+    placeholder.classList.add('hidden');
+    strip.innerHTML = '';
+    stripWords.forEach(w => {
+      strip.insertAdjacentHTML('beforeend', chipHtml(w, 'strip'));
+    });
+  }
+  lucide.createIcons();
+  attachChipListeners();
+}
+
+function chipHtml(word, source) {
+  return `<div
+    class="word-chip flex-shrink-0 px-3 py-1.5 rounded-xl border-2 border-slate-300 bg-white text-sm font-bold text-black shadow-sm hover:border-yellow-500 hover:shadow transition-all"
+    draggable="true"
+    data-id="${word.id}"
+    data-source="${source}">
+    ${word.klamath}
+    <span class="english-text text-[10px] text-slate-400 font-normal ml-1${showEnglish ? '' : ' invisible'}">${word.english}</span>
+  </div>`;
+}
+
+function attachChipListeners() {
+  document.querySelectorAll('.word-chip').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+      draggedChip = { id: parseInt(chip.dataset.id), source: chip.dataset.source };
+      chip.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', () => {
+      chip.classList.remove('dragging');
+    });
+    // Touch support
+    chip.addEventListener('touchstart', handleTouchStart, { passive: true });
+    chip.addEventListener('touchmove',  handleTouchMove,  { passive: false });
+    chip.addEventListener('touchend',   handleTouchEnd,   { passive: true });
+  });
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDrop(e, target) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!draggedChip) return;
+  moveChip(draggedChip.id, draggedChip.source, target);
+  draggedChip = null;
+}
+
+function moveChip(id, from, to) {
+  if (from === to) return;
+  if (from === 'bank' && to === 'strip') {
+    const idx = bankWords.findIndex(w => w.id === id);
+    if (idx === -1) return;
+    const [word] = bankWords.splice(idx, 1);
+    stripWords.push(word);
+  } else if (from === 'strip' && to === 'bank') {
+    const idx = stripWords.findIndex(w => w.id === id);
+    if (idx === -1) return;
+    const [word] = stripWords.splice(idx, 1);
+    bankWords.push(word);
+  }
+  renderBuilder();
+}
+
+// ---- Touch drag support ----
+let touchChip = null;
+let touchClone = null;
+
+function handleTouchStart(e) {
+  const chip = e.currentTarget;
+  touchChip = { id: parseInt(chip.dataset.id), source: chip.dataset.source };
+}
+function handleTouchMove(e) {
+  // Prevent default page scrolling so the drag gesture works correctly
+  e.preventDefault();
+}
+function handleTouchEnd(e) {
+  if (!touchChip) return;
+  const touch = e.changedTouches[0];
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  const dropZone = el ? el.closest('.drop-zone') : null;
+  if (dropZone) {
+    const target = dropZone.id === 'sentence-strip' ? 'strip' : 'bank';
+    moveChip(touchChip.id, touchChip.source, target);
+  }
+  touchChip = null;
+}
+
+function playSentence() {
+  if (!window.speechSynthesis || stripWords.length === 0) return;
+  const text = stripWords.map(w => w.phonetic).join(' ');
+  speak(null, text);
+}
+
+function clearSentence() {
+  bankWords = [...bankWords, ...stripWords];
+  stripWords = [];
+  renderBuilder();
+}
+
+// ===========================
+// CULTURE — TIMELINE
+// ===========================
+function buildTimeline() {
+  const container = document.getElementById('timeline-items');
+  container.innerHTML = TIMELINE.map((item, i) => `
+    <div class="relative mb-6">
+      <div class="absolute -left-[30px] top-1 w-4 h-4 rounded-full border-4 border-white ${i % 2 === 0 ? 'bg-yellow-500' : 'bg-red-600'}"></div>
+      <p class="text-xs font-black text-slate-500 uppercase tracking-wider mb-0.5">${item.year}</p>
+      <p class="text-sm text-slate-700 leading-relaxed">${item.text}</p>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>
